@@ -16,3 +16,18 @@ collect2.exe: error: ld returned 1 exit status
 The error is a classic C vs C++ compatibility issue (often called "Name Mangling").
 
 *handle:* change main.cpp to main.c
+
+
+
+## list of lcd commands:
+Function,Hex Code,Description
+Clear Display,0x01,"Wipes text, resets cursor to start. (Needs 2ms delay)"
+Return Home,0x02,"Moves cursor to start, leaves text alone. (Needs 2ms delay)"
+Entry Mode,0x06,Auto-increment cursor (write left-to-right).
+Display Control,0x0C,"Display ON, Cursor OFF."
+Display Control,0x0E,"Display ON, Cursor ON (Underscore)."
+Display Control,0x0F,"Display ON, Cursor Blinking."
+Shift Left,0x18,Shifts the entire text to the left.
+Shift Right,0x1C,Shifts the entire text to the right.
+Set Cursor,0x80,Force cursor to specific position (Line 1 start).
+Set Cursor,0xC0,Force cursor to specific position (Line 2 start). 
