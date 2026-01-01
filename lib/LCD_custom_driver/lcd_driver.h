@@ -55,4 +55,6 @@ void LCD_Char(unsigned char data);
 // Print a full string
 void LCD_Print(char *str);
 
+void LCD_clear();
+
 #endif

@@ -65,3 +65,8 @@ void LCD_Print(char *str) {
         LCD_Char(*str++);
     }
 }
+
+void LCD_clear(){
+    LCD_Command(0x01);  // Send Clear Command
+    _delay_ms(2);       // MANDATORY DELAY
+}
