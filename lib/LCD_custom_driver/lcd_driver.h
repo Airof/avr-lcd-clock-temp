@@ -53,8 +53,11 @@ void LCD_Command(unsigned char cmd);
 void LCD_Char(unsigned char data);
 
 // Print a full string
-void LCD_Print(char *str);
+void LCD_Print(const char *str, uint8_t line);
 
-void LCD_clear();
+void LCD_Print_Int(int num, uint8_t line);
+
+void LCD_Clear();
+
 
 #endif

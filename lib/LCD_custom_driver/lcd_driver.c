@@ -1,6 +1,7 @@
 // lib/LCD_custom_driver/lcd_driver.c
 #include "lcd_driver.h"
-
+#include "Commands.h"
+#include <stdlib.h>
 // --- Internal Helper Functions (Not usually called by user) ---
 
 void LCD_Pulse_Enable() {
@@ -45,10 +46,11 @@ void LCD_Init() {
     LCD_Send_Nibble(0x03);
     LCD_Send_Nibble(0x02); // 4-bit mode
 
-    LCD_Byte(0x28, 1); // Function Set
-    LCD_Byte(0x0C, 1); // Display ON
-    LCD_Byte(0x06, 1); // Entry Mode
-    LCD_Byte(0x01, 1); // Clear
+    // NOW USE THE MACROS:
+    LCD_Byte(LCD_FUNCTION_4BIT_2LINE, 1); // 0x28
+    LCD_Byte(LCD_DISPLAY_ON, 1);          // 0x0C
+    LCD_Byte(LCD_ENTRY_INC, 1);           // 0x06
+    LCD_Byte(LCD_CMD_CLEAR, 1);           // 0x01
     _delay_ms(2);
 }
 
@@ -60,13 +62,27 @@ void LCD_Char(unsigned char data) {
     LCD_Byte(data, 0);
 }
 
-void LCD_Print(char *str) {
+void LCD_Print(const char *str, uint8_t line) {
+    if (line == 0) {
+        LCD_Command(LCD_LINE1_START); // Force start of Line 1
+    } 
+    else if (line == 1) {
+        LCD_Command(LCD_LINE2_START); // Force start of Line 2
+    }
     while (*str) {
         LCD_Char(*str++);
     }
 }
 
-void LCD_clear(){
-    LCD_Command(0x01);  // Send Clear Command
-    _delay_ms(2);       // MANDATORY DELAY
+void LCD_Clear(){
+    LCD_Command(LCD_CMD_CLEAR);   // 0x01
+    _delay_ms(2);       
+}
+
+void LCD_Print_Int(int num, uint8_t line){
+    char string_buffer[16];
+    itoa(num, string_buffer, 10); 
+    // Print the resulting string
+    LCD_Print(string_buffer, 1);
+
 }

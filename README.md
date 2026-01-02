@@ -18,6 +18,31 @@ The error is a classic C vs C++ compatibility issue (often called "Name Mangling
 *handle:* change main.cpp to main.c
 
 
+## third error
+```
+src\main.c:37:23: warning: passing argument 1 of 'LCD_Print' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+
+             LCD_Print(calendar[i].name,1);
+
+                       ^~~~~~~~
+
+In file included from src\main.c:4:0:
+
+lib\LCD_custom_driver/lcd_driver.h:56:6: note: expected 'char *' but argument is of type 'const char * const' 
+
+ void LCD_Print(char *str, uint8_t line);
+
+```
+*handle:* change
+```
+void LCD_Print(char *str, uint8_t line)
+```
+to 
+```
+void LCD_Print(const char *str, uint8_t line)
+```
+
+
 
 ## list of lcd commands:
 Function,Hex Code,Description
