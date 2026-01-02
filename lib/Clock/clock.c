@@ -1,3 +1,4 @@
+// lib/Clock/clock.c
 #include "clock.h"
 #include "lcd_driver.h"
 #include <stdlib.h>
@@ -17,17 +18,15 @@ static const Month calendar[] = {
 
 static uint16_t year;
 static uint8_t seconds, minutes, hours, day, month_index;
-
-// NEW: Track what we are editing
 static EditState current_state = EDIT_NONE;
-static uint8_t blink_state = 0; // For flashing the cursor
+static uint8_t blink_state = 0; 
 
 // --- Helpers ---
 static void print_two_digits(uint8_t num) {
     char buffer[5];
-    if (num < 10) LCD_Print("0", 255);
+    if (num < 10) LCD_Print("0", AUTO);
     itoa(num, buffer, 10);
-    LCD_Print(buffer, 255);
+    LCD_Print(buffer, AUTO);
 }
 
 // --- Public Functions ---
@@ -37,25 +36,43 @@ void Clock_Init(uint8_t h, uint8_t m, uint8_t s, uint8_t d, uint8_t month_idx, u
     day = d; month_index = month_idx; year = y;
 }
 
-// Button 1: Switch Mode
-void Clock_NextMode(void) {
-    current_state++;
-    if (current_state > EDIT_MINUTE) {
-        current_state = EDIT_NONE; // Exit edit mode
+// === CONTROL FUNCTIONS ===
+
+void Clock_ToggleEditMode(void) {
+    if (current_state == EDIT_NONE) {
+        current_state = EDIT_YEAR; // Start editing Year
+    } else {
+        current_state = EDIT_NONE; // Save and Exit
     }
+    blink_state = 0; // Make visible immediately
 }
 
-// Button 2: Increase Value
+void Clock_SetEditState(EditState state) {
+    current_state = state;
+}
+
+EditState Clock_GetEditState(void) {
+    return current_state;
+}
+
+void Clock_NextField(void) {
+    current_state++;
+    if (current_state > EDIT_MINUTE) {
+        current_state = EDIT_YEAR; // Loop back to Year (Don't exit)
+    }
+    blink_state = 0;
+}
+
 void Clock_Increment(void) {
+    blink_state = 0;
     switch (current_state) {
         case EDIT_YEAR:
             year++;
-            if (year > 2100) year = 2024;
+            if (year > 2100) year = 2000;
             break;
         case EDIT_MONTH:
             month_index++;
             if (month_index >= 12) month_index = 0;
-            // Safety: If we go Jan 31 -> Feb, clamp day to 28
             if (day > calendar[month_index].days) day = calendar[month_index].days;
             break;
         case EDIT_DAY:
@@ -69,24 +86,57 @@ void Clock_Increment(void) {
         case EDIT_MINUTE:
             minutes++;
             if (minutes >= 60) minutes = 0;
-            seconds = 0; // Reset seconds when adjusting time
+            seconds = 0;
             break;
-        default:
-            break;
+        default: break;
     }
 }
 
-EditState Clock_GetState(void) {
-    return current_state;
+// NEW FUNCTION: Handle going backwards
+void Clock_Decrement(void) {
+    blink_state = 0;
+    switch (current_state) {
+        case EDIT_YEAR:
+            year--;
+            if (year < 2000) year = 2100;
+            break;
+
+        case EDIT_MONTH:
+            if (month_index == 0) month_index = 11;
+            else month_index--;
+            
+            // Safety: Check days (e.g. going form Mar 31 to Feb)
+            if (day > calendar[month_index].days) day = calendar[month_index].days;
+            break;
+
+        case EDIT_DAY:
+            day--;
+            if (day < 1) day = calendar[month_index].days;
+            break;
+
+        case EDIT_HOUR:
+            if (hours == 0) hours = 23;
+            else hours--;
+            break;
+
+        case EDIT_MINUTE:
+            if (minutes == 0) minutes = 59;
+            else minutes--;
+            seconds = 0;
+            break;
+
+        default: break;
+    }
 }
+
+// === CORE LOGIC ===
 
 void Clock_Tick(void) {
-    // DON'T tick time while user is setting it (optional preference)
     if (current_state != EDIT_NONE) {
-        blink_state = !blink_state; // Toggle blink every tick
+        blink_state = !blink_state; 
         return; 
     }
-
+    // Standard Time Math
     seconds++;
     if (seconds >= 60) {
         seconds = 0; minutes++;
@@ -107,45 +157,54 @@ void Clock_Tick(void) {
 
 void Clock_Display(void) {
     char buffer[10];
-    
-    // Logic: If we are editing THIS field, and blink_state is 1, print spaces
-    // Otherwise, print the number normally.
-
-    // --- Line 1: Month Day Year ---
-    LCD_Print("", 0); 
+    LCD_Print("", LINE_1); 
     
     // Month
-    if (current_state == EDIT_MONTH && blink_state) LCD_Print("   ", 255);
-    else LCD_Print(calendar[month_index].name, 255); 
-    LCD_Print(" ", 255);
+    if (current_state == EDIT_MONTH && blink_state) LCD_Print("   ", AUTO);
+    else LCD_Print(calendar[month_index].name, AUTO); 
+    LCD_Print(" ", AUTO);
     
     // Day
-    if (current_state == EDIT_DAY && blink_state) LCD_Print("  ", 255);
+    if (current_state == EDIT_DAY && blink_state) LCD_Print("  ", AUTO);
     else print_two_digits(day); 
-    LCD_Print(" ", 255);
+    LCD_Print(" ", AUTO);
 
     // Year
-    if (current_state == EDIT_YEAR && blink_state) LCD_Print("    ", 255);
+    if (current_state == EDIT_YEAR && blink_state) LCD_Print("    ", AUTO);
     else {
         itoa(year, buffer, 10);
-        LCD_Print(buffer, 255);
+        LCD_Print(buffer, AUTO);
     }
-    LCD_Print("    ", 255); // Ghosts
+    LCD_Print("    ", AUTO); 
 
-    // --- Line 2: HH:MM:SS ---
-    LCD_Print("", 1); 
+    LCD_Print("", LINE_2); 
+
+    // === MODIFIED AM/PM LOGIC ===
+    uint8_t display_hour = hours;
+    const char* suffix = "AM";
+
+    if (display_hour >= 12) {
+        suffix = "PM";
+        // If it's 13, 14, etc., subtract 12 to get 1, 2...
+        // If it's 12 (Noon), it stays 12.
+        if (display_hour > 12) display_hour -= 12;
+    }
+    
+    // REMOVED: The line "if (display_hour == 0) display_hour = 12;"
+    // Result: Midnight (00) stays 00 AM. Noon (12) stays 12 PM.
 
     // Hour
-    if (current_state == EDIT_HOUR && blink_state) LCD_Print("  ", 255);
-    else print_two_digits(hours);
-    LCD_Print(":", 255);
+    if (current_state == EDIT_HOUR && blink_state) LCD_Print("  ", AUTO);
+    else print_two_digits(display_hour);
+    LCD_Print(":", AUTO);
 
     // Minute
-    if (current_state == EDIT_MINUTE && blink_state) LCD_Print("  ", 255);
+    if (current_state == EDIT_MINUTE && blink_state) LCD_Print("  ", AUTO);
     else print_two_digits(minutes);
-    LCD_Print(":", 255);
+    LCD_Print(":", AUTO);
 
-    // Second (Never edited, always visible)
     print_two_digits(seconds);
-    LCD_Print("        ", 255); // Ghosts
+    LCD_Print(" ", AUTO);
+    LCD_Print(suffix, AUTO);
+    LCD_Print("  ", AUTO);
 }
