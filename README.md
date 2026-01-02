@@ -1,72 +1,82 @@
-### first error 
-the driver for LCD works via arduino not avr/io.h
+# AVR-ThermoChron 🌡️🕒
 
-*handle:* write it myself 
+**AVR-ThermoChron** is a dual-mode digital clock and thermometer designed for AVR microcontrollers. It features a custom-written LCD driver, a robust state-machine based UI for setting time/date, and real-time temperature monitoring using an LM35 sensor.
 
-### second error
-```
-C:\Users\Airof\AppData\Local\Temp\ccDp9NoF.ltrans0.ltrans.o: In function `main':
-<artificial>:(.text.startup+0x0): undefined reference to `LCD_Init()'
-<artificial>:(.text.startup+0x8): undefined reference to `LCD_Print(char*)'
-<artificial>:(.text.startup+0xe): undefined reference to `LCD_Command(unsigned char)'     
-<artificial>:(.text.startup+0x16): undefined reference to `LCD_Print(char*)'
-collect2.exe: error: ld returned 1 exit status
-*** [.pio\build\ATmega328p\firmware.elf] Error 1
-```
-The error is a classic C vs C++ compatibility issue (often called "Name Mangling").
+The codebase is designed to be **portable**, compiling seamlessly for both **ATmega32** and **ATmega328P** chips using PlatformIO.
 
-*handle:* change main.cpp to main.c
+## ✨ Features
+* **Dual Chip Support:** Runs on ATmega32 (Port A LCD) and ATmega328P (Port B/D LCD) from the same source code.
+* **Real-Time Clock:** Tracks Year, Month, Day, Hour, Minute, Second.
+* **Smart Calendar:** Handles days per month (leap year logic included).
+* **Temperature Mode:** Automatically cycles between Clock and Room Temperature (C/F) every 45 seconds.
+* **Manual Override:** Instantly check temperature via button press.
+* **Interactive UI:** Blink-based editing mode to set time and date.
+* **Pure C Driver:** Custom lightweight LCD library (no Arduino dependencies).
 
+---
 
-## third error
-```
-src\main.c:37:23: warning: passing argument 1 of 'LCD_Print' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+## 🛠 Hardware Setup
 
-             LCD_Print(calendar[i].name,1);
+### 1. Wiring the LCD (16x2)
+| Pin Name | ATmega328P | ATmega32 |
+| :--- | :--- | :--- |
+| **RS** | `PB4` | `PA0` |
+| **EN** | `PB3` | `PA1` |
+| **D4** | `PD5` | `PA2` |
+| **D5** | `PD4` | `PA3` |
+| **D6** | `PD3` | `PA4` |
+| **D7** | `PD2` | `PA5` |
 
-                       ^~~~~~~~
-
-In file included from src\main.c:4:0:
-
-lib\LCD_custom_driver/lcd_driver.h:56:6: note: expected 'char *' but argument is of type 'const char * const' 
-
- void LCD_Print(char *str, uint8_t line);
-
-```
-*handle:* change
-```
-void LCD_Print(char *str, uint8_t line)
-```
-to 
-```
-void LCD_Print(const char *str, uint8_t line)
-```
-
-## third error:
-[img path]
-*handle:* didn't clear automatically so add `LCD_Clear()`;
-
-
-## 🛠 Button Controls
+### 2. Button Controls
 Connect buttons between the pins below and **GND** (internal pull-ups are enabled).
 
-| Button | Pin | Function | Test Action |
+| Button | Pin (Port B) | Function | Test Action |
 | :--- | :--- | :--- | :--- |
 | **MODE** | `PB0` | Cycle Selection | Press to start blinking the Year, Month, etc. |
 | **UP** | `PB1` | Increment (+) | Press to increase the selected number. |
 | **DOWN** | `PB2` | Decrement (-) | Press to decrease the selected number. |
 | **COMBO** | `PB1`+`PB2` | Toggle Edit Mode | Hold **UP** + **DOWN** to quickly enter or exit editing. |
 
+### 3. Sensors
+* **LM35 Temperature Sensor:** Connect Vout to `PA7` (ATmega32) or `PC0` (ATmega328P).
 
-## list of lcd commands:
-Function,Hex Code,Description
-Clear Display,0x01,"Wipes text, resets cursor to start. (Needs 2ms delay)"
-Return Home,0x02,"Moves cursor to start, leaves text alone. (Needs 2ms delay)"
-Entry Mode,0x06,Auto-increment cursor (write left-to-right).
-Display Control,0x0C,"Display ON, Cursor OFF."
-Display Control,0x0E,"Display ON, Cursor ON (Underscore)."
-Display Control,0x0F,"Display ON, Cursor Blinking."
-Shift Left,0x18,Shifts the entire text to the left.
-Shift Right,0x1C,Shifts the entire text to the right.
-Set Cursor,0x80,Force cursor to specific position (Line 1 start).
-Set Cursor,0xC0,Force cursor to specific position (Line 2 start). 
+---
+
+## 📚 Technical Reference
+
+### Custom LCD Driver Commands
+The project uses a custom lightweight driver. Below are the hex codes used for low-level control defined in `Commands.h`.
+
+| Command | Hex Code | Description |
+| :--- | :--- | :--- |
+| **Clear Display** | `0x01` | Wipes text, resets cursor to start. (Needs 2ms delay) |
+| **Return Home** | `0x02` | Moves cursor to start, leaves text alone. |
+| **Entry Mode** | `0x06` | Auto-increment cursor (write left-to-right). |
+| **Display ON** | `0x0C` | Display ON, Cursor OFF. |
+| **Cursor ON** | `0x0E` | Display ON, Cursor ON (Underscore). |
+| **Blink ON** | `0x0F` | Display ON, Cursor Blinking. |
+| **Shift Left** | `0x18` | Shifts the entire text to the left. |
+| **Shift Right** | `0x1C` | Shifts the entire text to the right. |
+| **Line 1 Start** | `0x80` | Force cursor to Line 1 start. |
+| **Line 2 Start** | `0xC0` | Force cursor to Line 2 start. |
+
+---
+
+## 📝 Development Notes & Troubleshooting
+Summary of challenges encountered and resolved during development.
+
+### 1. Arduino vs. AVR Native
+**Issue:** The initial LCD driver implementation relied on Arduino libraries (`LiquidCrystal`), which bloated the code and obscured hardware details.
+**Solution:** A custom, register-level driver was written from scratch using `<avr/io.h>`. This allows direct port manipulation for maximum speed and portability.
+
+### 2. C/C++ Linker Errors
+**Issue:** `undefined reference to LCD_Init()`
+**Cause:** The project mixed `.c` (driver) and `.cpp` (main) files. The C++ compiler "mangled" function names, causing the linker to fail when looking for C functions.
+**Solution:** Renamed `main.cpp` to `main.c`. The entire project is now pure C.
+
+### 3. Pointer Qualifiers
+**Issue:** Warning: `passing argument 1 of 'LCD_Print' discards 'const' qualifier`
+**Cause:** The print function was defined as `void LCD_Print(char *str)`, but string literals (e.g., `"January"`) are `const`.
+**Solution:** Updated the function signature in the header and source to accept constant strings:
+```c
+void LCD_Print(const char *str, uint8_t line);
