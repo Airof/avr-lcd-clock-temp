@@ -42,6 +42,9 @@ to
 void LCD_Print(const char *str, uint8_t line)
 ```
 
+## third error:
+[img path]
+*handle:* didn't clear automatically so add `LCD_Clear()`;
 
 
 ## list of lcd commands:

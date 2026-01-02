@@ -4,6 +4,7 @@
 #include <stdlib.h>
 // --- Internal Helper Functions (Not usually called by user) ---
 
+
 void LCD_Pulse_Enable() {
     LCD_CTRL_PORT |= (1 << LCD_EN);
     _delay_us(1);
@@ -71,6 +72,7 @@ void LCD_Print(const char *str, uint8_t line) {
     }
     while (*str) {
         LCD_Char(*str++);
+        _delay_us(10);
     }
 }
 
