@@ -84,7 +84,5 @@ void LCD_Clear(){
 void LCD_Print_Int(int num, uint8_t line){
     char string_buffer[16];
     itoa(num, string_buffer, 10); 
-    // Print the resulting string
-    LCD_Print(string_buffer, 1);
-
+    LCD_Print(string_buffer, line); 
 }

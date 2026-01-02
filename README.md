@@ -47,6 +47,17 @@ void LCD_Print(const char *str, uint8_t line)
 *handle:* didn't clear automatically so add `LCD_Clear()`;
 
 
+## 🛠 Button Controls
+Connect buttons between the pins below and **GND** (internal pull-ups are enabled).
+
+| Button | Pin | Function | Test Action |
+| :--- | :--- | :--- | :--- |
+| **MODE** | `PB0` | Cycle Selection | Press to start blinking the Year, Month, etc. |
+| **UP** | `PB1` | Increment (+) | Press to increase the selected number. |
+| **DOWN** | `PB2` | Decrement (-) | Press to decrease the selected number. |
+| **COMBO** | `PB1`+`PB2` | Toggle Edit Mode | Hold **UP** + **DOWN** to quickly enter or exit editing. |
+
+
 ## list of lcd commands:
 Function,Hex Code,Description
 Clear Display,0x01,"Wipes text, resets cursor to start. (Needs 2ms delay)"

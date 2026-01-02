@@ -27,4 +27,5 @@
 void Clock_Input_Init(void);
 void Clock_Input_Update(void);
 
+uint8_t Clock_Input_WasTempRequested(void);
 #endif
